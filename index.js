@@ -1,71 +1,62 @@
-const { Telegraf, Markup } = require("telegraf");
-const express = require("express");
-const { getDetails } = require("./api");
-const { sendFile } = require("./utils");
+async function main() {
+  const { Telegraf, Markup } = require("telegraf");
+  const { getDetails } = require("./api");
+  const { sendFile } = require("./utils");
+  const express = require("express");
 
-const bot = new Telegraf(process.env.BOT_TOKEN);
+  const bot = new Telegraf(process.env.BOT_TOKEN);
 
-async function isSubscribed(ctx, channelUsername) {
-  try {
-    const chatMember = await ctx.telegram.getChatMember(channelUsername, ctx.from.id);
-    const status = chatMember.status;
+  bot.start(async (ctx) => {
+    try {
+      ctx.reply(
+        `Hi ${ctx.message.from.first_name},\n\nI can Download Files from Terabox.\n\nMade with ❤️ by @botcodes123\n\nSend any terabox link to download.`,
+        Markup.inlineKeyboard([
+          Markup.button.url(" Channel", "https://t.me/botcodes123"),
+          Markup.button.url("Report bug", "https://t.me/Armanidrisi_bot"),
+        ]),
+      );
+    } catch (e) {
+      console.error(e);
+    }
+  });
 
-    // Return true if the user is a member, administrator, or creator
-    return status === 'member' || status === 'administrator' || 'creator';
-  } catch (e) {
-    console.error('Error checking subscription:', e);
-    return false;
-  }
-}
+  bot.on("message", async (ctx) => {
+    if (ctx.message && ctx.message.text) {
+      const messageText = ctx.message.text;
+      if (
+        messageText.includes("terabox.com") ||
+        messageText.includes("teraboxapp.com")
+      ) {
+        //const parts = messageText.split("/");
+        //const linkID = parts[parts.length - 1];
 
-async function handleMessage(ctx) {
-  const channelUsername = '@Film_Nest'; // The target channel username
+        // ctx.reply(linkID)
 
-  // Check if the user is subscribed to the channel
-  const isUserSubscribed = await isSubscribed(ctx, channelUsername);
-
-  if (!isUserSubscribed) {
-    // If the user is not subscribed, prompt them to join
-    await ctx.reply(
-      `Please join our channel @Film_Nest to use this bot.`,
-      Markup.inlineKeyboard([Markup.button.url("Join Channel", `https://t.me/${channelUsername}`)])
-    );
-    return;
-  }
-
-  // The user is subscribed, continue with the usual functionality
-  if (ctx.message && ctx.message.text) {
-    const messageText = ctx.message.text;
-    if (messageText.includes("terabox.com") || messageText.includes("teraboxapp.com")) {
-      // Handle Terabox link processing as usual
-      const details = await getDetails(messageText);
-      if (details && details.direct_link) {
-        try {
-          await ctx.reply(`Sending Files. Please wait!`);
-          sendFile(details.direct_link, ctx);
-        } catch (e) {
-          console.error(e);
+        const details = await getDetails(messageText);
+        if (details && details.direct_link) {
+          try {
+            ctx.reply(`Sending Files Please Wait.!!`);
+            sendFile(details.direct_link, ctx);
+          } catch (e) {
+            console.error(e); // Log the error for debugging
+          }
+        } else {
+          ctx.reply('Something went wrong 🙃');
         }
+        console.log(details);
       } else {
-        await ctx.reply('Something went wrong 🙃');
+        ctx.reply("Please send a valid Terabox link.");
       }
     } else {
-      await ctx.reply("Please send a valid Terabox link.");
+      //ctx.reply("No message text found.");
     }
-  }
-}
-
-bot.on("message", handleMessage);
-
-async function main() {
-  // Set up express and webhook
-  const app = express();
-  await bot.createWebhook({ domain: process.env.WEBHOOK_URL });
-
-  // Listen on the specified port
-  app.listen(process.env.PORT || 3000, () => {
-    console.log("Server Started");
   });
+
+  const app = express();
+  // Set the bot API endpoint
+  app.use(await bot.createWebhook({ domain: process.env.WEBHOOK_URL }));
+
+  app.listen(process.env.PORT || 3000, () => console.log("Server Started"));
 }
 
 main();
