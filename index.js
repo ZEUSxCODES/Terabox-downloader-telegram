@@ -4,7 +4,6 @@ const { getDetails } = require("./api");
 const { sendFile } = require("./utils");
 
 const bot = new Telegraf(process.env.BOT_TOKEN);
-const app = express();
 
 // Function to check if the user is subscribed to a channel
 async function isSubscribed(ctx, channelUsername) {
@@ -78,22 +77,15 @@ async function handleMessage(ctx) {
 // Replace your current bot.on("message") handler with the handleMessage function
 bot.on("message", handleMessage);
 
-// Set webhook URL
-async function setWebhook() {
-    try {
-        await bot.telegram.setWebhook(process.env.WEBHOOK_URL);
-    } catch (e) {
-        console.error('Error setting webhook:', e);
-    }
+async function main() {
+    // Set up express and webhook
+    const app = express();
+    await bot.createWebhook({ domain: process.env.WEBHOOK_URL });
+
+    // Listen on the specified port
+    app.listen(process.env.PORT || 3000, () => {
+        console.log("Server started.");
+    });
 }
 
-// Start listening for incoming updates
-setWebhook().then(() => {
-    app.use(bot.webhookCallback('/telegraf/cfa2ee21358c32d857203cfdec4456817960b5c92e47898025ee32c735158839'));
-    const PORT = process.env.PORT || 3000;
-    app.listen(PORT, () => {
-        console.log(`Server started on port ${PORT}`);
-    });
-}).catch((error) => {
-    console.error('Error starting bot:', error);
-});
+main();
