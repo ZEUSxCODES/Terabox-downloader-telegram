@@ -6,6 +6,19 @@ async function main() {
 
     const bot = new Telegraf(process.env.BOT_TOKEN);
 
+    // Function to check if the user is subscribed to a channel
+    async function isSubscribed(ctx, channelUsername) {
+        try {
+            const chatMember = await ctx.telegram.getChatMember(channelUsername, ctx.from.id);
+            const status = chatMember.status;
+            // Return true if the user is a member, administrator, or creator
+            return status === 'member' || status === 'administrator' || status === 'creator';
+        } catch (e) {
+            console.error('Error checking subscription:', e);
+            return false;
+        }
+    }
+
     bot.start(async (ctx) => {
         try {
             ctx.reply(
@@ -57,9 +70,10 @@ async function main() {
                         sendFile(details.direct_link, ctx);
                     } catch (e) {
                         console.error(e); // Log the error for debugging
+                        ctx.reply('Something went wrong while sending the file.');
                     }
                 } else {
-                    ctx.reply('Something went wrong 🙃');
+                    ctx.reply('Something went wrong while fetching the file details.');
                 }
                 console.log(details);
             } else {
