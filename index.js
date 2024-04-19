@@ -41,11 +41,12 @@ async function handleMessage(ctx) {
     const isUserSubscribed = await isSubscribed(ctx, channelUsername);
 
     if (!isUserSubscribed) {
-        // If the user is not subscribed, prompt them to join
+        // If the user is not subscribed, prompt them to join or force subscribe
         ctx.reply(
-            `Please join our channel @Film_Nest to use this bot.`,
+            Please join our channel @Film_Nest to use this bot. If you've already joined, click below to verify.,
             Markup.inlineKeyboard([
-                Markup.button.url("Join Channel", `https://t.me/${channelUsername}`)
+                Markup.button.url("Join Channel", https://t.me/${channelUsername}),
+                Markup.button.callback("Verify Subscription", "verify_subscription")
             ])
         );
         return;
@@ -59,7 +60,7 @@ async function handleMessage(ctx) {
             const details = await getDetails(messageText);
             if (details && details.direct_link) {
                 try {
-                    ctx.reply(`Sending files. Please wait!`);
+                    ctx.reply(Sending files. Please wait!);
                     sendFile(details.direct_link, ctx);
                 } catch (e) {
                     console.error(e);
@@ -73,18 +74,19 @@ async function handleMessage(ctx) {
     }
 }
 
+// Callback query handler for verifying subscription
+bot.action("verify_subscription", async (ctx) => {
+    const channelUsername = '@Film_Nest'; // The target channel username
+
+    // Check if the user is subscribed to the channel
+    const isUserSubscribed = await isSubscribed(ctx, channelUsername);
+
+    if (isUserSubscribed) {
+        ctx.answerCbQuery("You're already subscribed. Enjoy using the bot!");
+    } else {
+        ctx.answerCbQuery("Please make sure you've joined the channel @Film_Nest.");
+    }
+});
+
 // Replace your current bot.on("message") handler with the handleMessage function
 bot.on("message", handleMessage);
-
-async function main() {
-    // Set up express and webhook
-    const app = express();
-    await bot.createWebhook({ domain: process.env.WEBHOOK_URL });
-
-    // Listen on the specified port
-    app.listen(process.env.PORT || 3000, () => {
-        console.log("Server started.");
-    });
-}
-
-main();
