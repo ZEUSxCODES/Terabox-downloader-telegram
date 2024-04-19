@@ -1,92 +1,105 @@
-const { Telegraf, Markup } = require("telegraf");
-const express = require("express");
-const { getDetails } = require("./api");
-const { sendFile } = require("./utils");
+import org.telegram.telegrambots.bots.TelegramLongPollingBot;
+import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
+import org.telegram.telegrambots.meta.api.objects.Message;
+import org.telegram.telegrambots.meta.api.objects.Update;
+import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
+import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton;
+import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
 
-const bot = new Telegraf(process.env.BOT_TOKEN);
+import java.util.ArrayList;
+import java.util.List;
 
-// Function to check if the user is subscribed to a channel
-async function isSubscribed(ctx, channelUsername) {
-    try {
-        const chatMember = await ctx.telegram.getChatMember(channelUsername, ctx.from.id);
-        const status = chatMember.status;
-        // Return true if the user is a member, administrator, or creator
-        return status === 'member' || status === 'administrator' || status === 'creator';
-    } catch (e) {
-        console.error('Error checking subscription:', e);
-        return false;
-    }
-}
+public class TeraboxBot extends TelegramLongPollingBot {
 
-// Command handler for /start
-bot.start(async (ctx) => {
-    try {
-        ctx.reply(
-            `Hi ${ctx.message.from.first_name},\n\nI can download files from Terabox.\n\nMade with ❤️ by @botcodes123.\n\nSend any Terabox link to download.`,
-            Markup.inlineKeyboard([
-                Markup.button.url("Join Channel", "https://t.me/Film_Nest"),
-                Markup.button.url("Report bug", "https://t.me/Armanidrisi_bot"),
-            ])
-        );
-    } catch (e) {
-        console.error(e);
-    }
-});
-
-// Handler for all messages
-async function handleMessage(ctx) {
-    const channelUsername = '@Film_Nest'; // The target channel username
-
-    // Check if the user is subscribed to the channel
-    const isUserSubscribed = await isSubscribed(ctx, channelUsername);
-
-    if (!isUserSubscribed) {
-        // If the user is not subscribed, prompt them to join or force subscribe
-        ctx.reply(
-            Please join our channel @Film_Nest to use this bot. If you've already joined, click below to verify.,
-            Markup.inlineKeyboard([
-                Markup.button.url("Join Channel", https://t.me/${channelUsername}),
-                Markup.button.callback("Verify Subscription", "verify_subscription")
-            ])
-        );
-        return;
-    }
-
-    // The user is subscribed, continue with the usual functionality
-    if (ctx.message && ctx.message.text) {
-        const messageText = ctx.message.text;
-        if (messageText.includes("terabox.com") || messageText.includes("teraboxapp.com")) {
-            // Handle Terabox link processing as usual
-            const details = await getDetails(messageText);
-            if (details && details.direct_link) {
-                try {
-                    ctx.reply(Sending files. Please wait!);
-                    sendFile(details.direct_link, ctx);
-                } catch (e) {
-                    console.error(e);
-                }
-            } else {
-                ctx.reply('Something went wrong 🙃');
-            }
-        } else {
-            ctx.reply("Please send a valid Terabox link.");
+    // Method to send a message
+    private synchronized void sendMessage(Message message, String text, InlineKeyboardMarkup markup) {
+        SendMessage sendMessage = new SendMessage();
+        sendMessage.setChatId(message.getChatId().toString());
+        sendMessage.setText(text);
+        if (markup != null) {
+            sendMessage.setReplyMarkup(markup);
+        }
+        try {
+            execute(sendMessage);
+        } catch (TelegramApiException e) {
+            e.printStackTrace();
         }
     }
-}
 
-// Callback query handler for verifying subscription
-bot.action("verify_subscription", async (ctx) => {
-    const channelUsername = '@Film_Nest'; // The target channel username
-
-    // Check if the user is subscribed to the channel
-    const isUserSubscribed = await isSubscribed(ctx, channelUsername);
-
-    if (isUserSubscribed) {
-        ctx.answerCbQuery("You're already subscribed. Enjoy using the bot!");
-    } else {
-        ctx.answerCbQuery("Please make sure you've joined the channel @Film_Nest.");
+    // Method to handle /start command
+    private void handleStart(Message message) {
+        String firstName = message.getFrom().getFirstName();
+        String text = "Hi " + firstName + ",\n\nI can download files from Terabox.\n\nMade with ❤️ by @botcodes123.\n\nSend any Terabox link to download.";
+        InlineKeyboardMarkup markup = new InlineKeyboardMarkup();
+        List<List<InlineKeyboardButton>> keyboard = new ArrayList<>();
+        List<InlineKeyboardButton> row = new ArrayList<>();
+        row.add(new InlineKeyboardButton().setText("Join Channel").setUrl("https://t.me/Film_Nest"));
+        row.add(new InlineKeyboardButton().setText("Report bug").setUrl("https://t.me/Armanidrisi_bot"));
+        keyboard.add(row);
+        markup.setKeyboard(keyboard);
+        sendMessage(message, text, markup);
     }
-});
 
-// Replace your current bot.on("message") handler with the handleMessage function
-bot.on("message", handleMessage);
+    // Method to handle messages
+    private void handleMessage(Message message) {
+        String channelUsername = "@Film_Nest"; // The target channel username
+
+        // Check if the user is subscribed to the channel
+        boolean isUserSubscribed = isSubscribed(message.getChatId(), channelUsername);
+
+        if (!isUserSubscribed) {
+            // If the user is not subscribed, prompt them to join
+            String text = "Please join our channel @Film_Nest to use this bot.";
+            InlineKeyboardMarkup markup = new InlineKeyboardMarkup();
+            List<List<InlineKeyboardButton>> keyboard = new ArrayList<>();
+            List<InlineKeyboardButton> row = new ArrayList<>();
+            row.add(new InlineKeyboardButton().setText("Join Channel").setUrl("https://t.me/" + channelUsername));
+            keyboard.add(row);
+            markup.setKeyboard(keyboard);
+            sendMessage(message, text, markup);
+            return;
+        }
+
+        // The user is subscribed, continue with the usual functionality
+        String messageText = message.getText();
+        if (messageText != null && (messageText.contains("terabox.com") || messageText.contains("teraboxapp.com"))) {
+            // Handle Terabox link processing as usual
+            // getDetails and sendFile methods implementation
+            // ...
+        } else {
+            sendMessage(message, "Please send a valid Terabox link.", null);
+        }
+    }
+
+    // Method to check if the user is subscribed to a channel
+    private boolean isSubscribed(Long chatId, String channelUsername) {
+        // Implementation to check subscription status
+        // Return true if the user is subscribed, false otherwise
+        return true; // Example: Always return true for demonstration purposes
+    }
+
+    @Override
+    public void onUpdateReceived(Update update) {
+        Message message = update.getMessage();
+        if (message != null && message.hasText()) {
+            String text = message.getText();
+            if ("/start".equals(text)) {
+                handleStart(message);
+            } else {
+                handleMessage(message);
+            }
+        }
+    }
+
+    @Override
+    public String getBotUsername() {
+        // Return bot username
+        return "YourBotUsername";
+    }
+
+    @Override
+    public String getBotToken() {
+        // Return bot token
+        return "YourBotToken";
+    }
+}
