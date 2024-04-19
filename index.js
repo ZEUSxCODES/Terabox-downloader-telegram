@@ -1,62 +1,90 @@
-async function main() {
-  const { Telegraf, Markup } = require("telegraf");
-  const { getDetails } = require("./api");
-  const { sendFile } = require("./utils");
-  const express = require("express");
+const { Telegraf, Markup } = require("telegraf");
+const express = require("express");
+const { getDetails } = require("./api");
+const { sendFile } = require("./utils");
 
-  const bot = new Telegraf(process.env.BOT_TOKEN);
+const bot = new Telegraf(process.env.BOT_TOKEN);
 
-  bot.start(async (ctx) => {
+// Function to check if the user is subscribed to a channel
+async function isSubscribed(ctx, channelUsername) {
     try {
-      ctx.reply(
-        `Hi ${ctx.message.from.first_name},\n\nI can Download Files from Terabox.\n\nMade with ❤️ by @botcodes123\n\nSend any terabox link to download.`,
-        Markup.inlineKeyboard([
-          Markup.button.url(" Channel", "https://t.me/botcodes123"),
-          Markup.button.url("Report bug", "https://t.me/Armanidrisi_bot"),
-        ]),
-      );
+        const chatMember = await ctx.telegram.getChatMember(channelUsername, ctx.from.id);
+        const status = chatMember.status;
+        // Return true if the user is a member, administrator, or creator
+        return status === 'member' || status === 'administrator' || status === 'creator';
     } catch (e) {
-      console.error(e);
+        console.error('Error checking subscription:', e);
+        return false;
     }
-  });
+}
 
-  bot.on("message", async (ctx) => {
+// Command handler for /start
+bot.start(async (ctx) => {
+    try {
+        ctx.reply(
+            `Hi ${ctx.message.from.first_name},\n\nI can download files from Terabox.\n\nMade with ❤️ by @botcodes123.\n\nSend any Terabox link to download.`,
+            Markup.inlineKeyboard([
+                Markup.button.url("Join Channel", "https://t.me/Film_Nest"),
+                Markup.button.url("Report bug", "https://t.me/Armanidrisi_bot"),
+            ])
+        );
+    } catch (e) {
+        console.error(e);
+    }
+});
+
+// Handler for all messages
+async function handleMessage(ctx) {
+    const channelUsername = '@Film_Nest'; // The target channel username
+
+    // Check if the user is subscribed to the channel
+    const isUserSubscribed = await isSubscribed(ctx, channelUsername);
+
+    if (!isUserSubscribed) {
+        // If the user is not subscribed, prompt them to join
+        ctx.reply(
+            `Please join our channel @Film_Nest to use this bot.`,
+            Markup.inlineKeyboard([
+                Markup.button.url("Join Channel", `https://t.me/${channelUsername}`)
+            ])
+        );
+        return;
+    }
+
+    // The user is subscribed, continue with the usual functionality
     if (ctx.message && ctx.message.text) {
-      const messageText = ctx.message.text;
-      if (
-        messageText.includes("terabox.com") ||
-        messageText.includes("teraboxapp.com")
-      ) {
-        //const parts = messageText.split("/");
-        //const linkID = parts[parts.length - 1];
-
-        // ctx.reply(linkID)
-
-        const details = await getDetails(messageText);
-        if (details && details.direct_link) {
-          try {
-            ctx.reply(`Sending Files Please Wait.!!`);
-            sendFile(details.direct_link, ctx);
-          } catch (e) {
-            console.error(e); // Log the error for debugging
-          }
+        const messageText = ctx.message.text;
+        if (messageText.includes("terabox.com") || messageText.includes("teraboxapp.com")) {
+            // Handle Terabox link processing as usual
+            const details = await getDetails(messageText);
+            if (details && details.direct_link) {
+                try {
+                    ctx.reply(`Sending files. Please wait!`);
+                    sendFile(details.direct_link, ctx);
+                } catch (e) {
+                    console.error(e);
+                }
+            } else {
+                ctx.reply('Something went wrong 🙃');
+            }
         } else {
-          ctx.reply('Something went wrong 🙃');
+            ctx.reply("Please send a valid Terabox link.");
         }
-        console.log(details);
-      } else {
-        ctx.reply("Please send a valid Terabox link.");
-      }
-    } else {
-      //ctx.reply("No message text found.");
     }
-  });
+}
 
-  const app = express();
-  // Set the bot API endpoint
-  app.use(await bot.createWebhook({ domain: process.env.WEBHOOK_URL }));
+// Replace your current bot.on("message") handler with the handleMessage function
+bot.on("message", handleMessage);
 
-  app.listen(process.env.PORT || 3000, () => console.log("Server Started"));
+async function main() {
+    // Set up express and webhook
+    const app = express();
+    await bot.createWebhook({ domain: process.env.WEBHOOK_URL });
+
+    // Listen on the specified port
+    app.listen(process.env.PORT || 3000, () => {
+        console.log("Server started.");
+    });
 }
 
 main();
